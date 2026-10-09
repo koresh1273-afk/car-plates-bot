@@ -1,8 +1,10 @@
+import os
 import random
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# В кавычки ниже обязательно вставьте токен от @BotFather!
 BOT_TOKEN = "8428532637:AAHN8JAmEoGTyFxfNNZoCiQTDtgwYYL4pJg"
 
 LETTERS = ['А', 'В', 'Е', 'К', 'М', 'Н', 'О', 'Р', 'С', 'Т', 'У', 'Х']
@@ -25,9 +27,9 @@ def generate_plate():
     if d1 == d2 == d3 and l1 == l2 == l3:
         rarity, bonus = "🔥 ЛЕГЕНДАРНЫЙ (Три буквы и три цифры)", 5000
     elif d1 == d2 == d3:
-        rarity, bonus = "💎 ОЧЕНЬ РЕДКИЙ (Три одинаковые цифры)", 1500
+        rarity, bonus = "💎 ОЧЕНЬ РЕДКИЙ (Три цифры)", 1500
     elif digits in ["001", "007", "777"]:
-        rarity, bonus = "⭐ БЛАТНОЙ (Красивая комбинация)", 1000
+        rarity, bonus = "⭐ БЛАТНОЙ", 1000
     elif d1 == d3:
         rarity, bonus = "✨ ЗЕРКАЛКА", 300
     else:
@@ -77,10 +79,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif text == "💰 Баланс":
         await update.message.reply_text(f"💵 Ваш баланс: {player['balance']} руб.")
 
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    server.serve_forever()
+
 def main():
+    threading.Thread(target=run_dummy_server, daemon=True).start()
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    print("Бот успешно запущен!")
     app.run_polling()
 
 if __name__ == "__main__":
